@@ -70,7 +70,7 @@ def evaluate_with_salt_pepper_noise(lda, knn, X_test, y_test, density):
 
     # Print classification report and confusion matrix
     print("\nClassification Report:")
-    print(classification_report(y_test, y_pred))
+    print(classification_report(y_test, y_pred, zero_division=0))
 
     print("\nConfusion Matrix:")
     cm = confusion_matrix(y_test, y_pred)
@@ -176,6 +176,8 @@ def run_salt_pepper_experiment():
     print("Showing salt-and-pepper noise effect on a single digit sample...")
     show_single_sample_across_densities(X_test[0], noise_densities)
 
+    eigenvalues_dict = {}
+
     for tau in tau_values:
         print(f"\n===============================")
         print(f"Evaluating LDA with tau = {tau}")
@@ -184,6 +186,9 @@ def run_salt_pepper_experiment():
         # Train LDA and kNN
         lda = LDA(n_components=9, tau=tau)
         lda.fit(X_train, y_train)
+        # Save eigenvalues for this tau
+        eigenvalues_dict[tau] = lda.eigenvalues
+
         X_train_lda = lda.transform(X_train)
 
         knn = KNeighborsClassifier(n_neighbors=7)
@@ -201,6 +206,9 @@ def run_salt_pepper_experiment():
             })
 
             confusion_matrices[(tau, density)] = cm
+            # Convert eigenvalues_dict to DataFrame for easy saving
+            eigenvalues_df = pd.DataFrame(dict([(tau, pd.Series(vals)) for tau, vals in eigenvalues_dict.items()]))
+            eigenvalues_df.to_csv("salt_pepper_eigenvalues.csv", index_label='Eigenvalue_Index')
 
     # Convert results to DataFrame for easier plotting
     df_results = pd.DataFrame(results)
@@ -267,6 +275,7 @@ def run_salt_pepper_experiment():
     df_results.to_csv("salt_pepper_noise_results.csv", index=False)
 
     return df_results
+
 
 
 # Main execution

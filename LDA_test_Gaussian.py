@@ -53,7 +53,7 @@ def evaluate_with_gaussian_noise(lda, knn, X_test, y_test, noise_std):
 
     # Print classification report and confusion matrix
     print("\nClassification Report:")
-    print(classification_report(y_test, y_pred))
+    print(classification_report(y_test, y_pred, zero_division=0))
 
     print("\nConfusion Matrix:")
     cm = confusion_matrix(y_test, y_pred)
@@ -130,10 +130,14 @@ def run_gaussian_noise_experiment():
         # Train LDA and kNN
         lda = LDA(n_components=9, tau=tau)
         lda.fit(X_train, y_train)
+
+        # Print or store the eigenvalues
+        print(f"Eigenvalues for tau={tau}: {lda.eigenvalues}")
         X_train_lda = lda.transform(X_train)
 
         knn = KNeighborsClassifier(n_neighbors=7)
         knn.fit(X_train_lda, y_train)
+
 
         # Evaluate on different noise levels
         for noise_std in noise_levels:

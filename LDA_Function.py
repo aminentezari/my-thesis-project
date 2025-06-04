@@ -17,6 +17,8 @@ class LDA:
         # Ensure n_components is valid (max is n_classes-1)
         self.n_components = min(self.n_components, n_classes - 1)
 
+        print(f"Detected number of classes: {n_classes}, using n_components: {self.n_components}")
+
         # Calculate cluster means and global mean
         mean_overall = np.mean(X, axis=0)
 
@@ -108,6 +110,8 @@ class LDA:
 
         # Store top eigenvalues
         self.eigenvalues = eigenvalues[:self.n_components]
+
+        print(f"Eigenvalues (top {self.n_components}) for tau={self.tau}: {self.eigenvalues}")
 
         # Step 8: Compute eigenvectors q of (S_W + epsilon*I)^(-1) * S_B
         # by solving K * q = w
