@@ -216,7 +216,7 @@ def run_lda_mnist(n_components=9, seed=42):
         # Plot bar chart of misclassifications
         digits = [str(i) for i in range(10)]
         plt.figure(figsize=(8, 5))
-        sns.barplot(x=digits, y=misclassified_per_class, hue=digits, palette="Reds", legend=False)
+        sns.barplot(x=digits, y=misclassified_per_class, palette="Reds")
         plt.title("Number of Misclassified Samples per Digit")
         plt.xlabel("Digit")
         plt.ylabel("Misclassifications")
@@ -490,12 +490,13 @@ def visualize_specific_misclassifications(y_test, y_pred, X_test, digit_pairs=[(
 
 def evaluate_accuracy_over_tau(tau_values, n_components=9, seed=42):
     """
-    For each tau, perform LDA + KNN, save eigenvalue plot and normalized confusion matrix.
+    Evaluate classification accuracy of LDA+KNN over different tau values.
     """
-    from LDA_Function import LDA
+    from LDA_Function import LDA  # Ensure LDA with tau parameter is used
+
     accuracies = []
 
-    # Load data once
+    # Reload the dataset
     mnist = datasets.fetch_openml('mnist_784', version=1, as_frame=False)
     X = mnist.data.astype('float32') / 255.0
     y = mnist.target.astype('int')
@@ -505,62 +506,34 @@ def evaluate_accuracy_over_tau(tau_values, n_components=9, seed=42):
         print(f"\nEvaluating tau = {tau:.1e}")
         lda = LDA(n_components=n_components, tau=tau)
         lda.fit(X_train, y_train)
-
-        # === Plot eigenvalues ===
-        eigenvals = np.abs(lda.eigenvalues)
-        plt.figure(figsize=(8, 5))
-        plt.bar(range(1, len(eigenvals) + 1), eigenvals)
-        plt.xlabel("LDA Component")
-        plt.ylabel("Eigenvalue Magnitude")
-        plt.title(f"LDA Eigenvalues (tau={tau:.1e})")
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(f"eigenvalues_tau_{tau:.0e}.png")
-        plt.close()
-
-        # === Transform data ===
         X_train_lda = lda.transform(X_train)
         X_test_lda = lda.transform(X_test)
 
-        # === Train and predict with KNN ===
         knn = KNeighborsClassifier(n_neighbors=7)
         knn.fit(X_train_lda, y_train)
         y_pred = knn.predict(X_test_lda)
 
-        # === Accuracy ===
         acc = accuracy_score(y_test, y_pred)
+        print(f"Accuracy: {acc*100:.2f}%")
         accuracies.append(acc)
-        print(f"Accuracy: {acc * 100:.2f}%")
 
-        # === Normalized confusion matrix ===
-        cm = confusion_matrix(y_test, y_pred)
-        cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-
-        plt.figure(figsize=(8, 6))
-        sns.heatmap(cm_normalized, annot=False, fmt=".2f", cmap="Blues")
-        plt.title(f"Normalized Confusion Matrix (tau={tau:.1e})")
-        plt.xlabel("Predicted")
-        plt.ylabel("True")
-        plt.tight_layout()
-        plt.savefig(f"confusion_matrix_tau_{tau:.0e}.png")
-        plt.close()
-
-    # Summary plot (optional)
-    plt.figure(figsize=(8, 5))
+    # Plotting
+    plt.figure(figsize=(8, 6))
     plt.semilogx(tau_values, accuracies, marker='o')
-    plt.title("Accuracy vs. Tau")
+    plt.title("Accuracy vs. Regularization Parameter (Tau)")
     plt.xlabel("Tau (log scale)")
     plt.ylabel("Accuracy")
     plt.grid(True, alpha=0.3)
-    plt.savefig("accuracy_vs_tau_summary.png")
-    plt.close()
+    plt.savefig("accuracy_vs_tau.png")
+    plt.show()
 
-    # Save results
-    results_df = pd.DataFrame({'tau': tau_values, 'accuracy': accuracies})
-    results_df.to_csv("tau_vs_accuracy_detailed.csv", index=False)
+    tau_results = pd.DataFrame({
+        'tau': tau_values,
+        'accuracy': accuracies
+    })
+    tau_results.to_csv("tau_vs_accuracy.csv", index=False)
 
-    return results_df
-
+    return list(zip(tau_values, accuracies))
 
 def load_clean_mnist_split(seed=42):
     """
@@ -588,12 +561,9 @@ if __name__ == "__main__":
         seed=42
     )
     # ==== Evaluate accuracy over different tau values ====
-    tau_values = [0.0,1e-12 ,1e-10, 1e-8, 1e-6, 1e-4]
+    tau_values = [1e-12 ,1e-10, 1e-8, 1e-6, 1e-4]
     results = evaluate_accuracy_over_tau(tau_values, n_components=9, seed=42)
 
     print("\nSummary of Accuracy for Each Tau:")
-    for idx, row in results.iterrows():
-        tau = row["tau"]
-        acc = row["accuracy"]
+    for tau, acc in results:
         print(f"Tau = {tau:.0e} → Accuracy = {acc * 100:.2f}%")
-
